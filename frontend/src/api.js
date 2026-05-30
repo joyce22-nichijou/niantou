@@ -22,3 +22,22 @@ export async function requestInvite(state) {
   if (!res.ok) throw new Error(`requestInvite 失败：HTTP ${res.status}`)
   return res.json()
 }
+
+export async function respondToInvite(thoughtId, outcome) {
+  const res = await fetch(`${API_BASE}/thoughts/invite/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ thought_id: thoughtId, outcome }),
+  })
+  if (!res.ok) throw new Error(`respondToInvite 失败：HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function archiveThought(thoughtId) {
+  const res = await fetch(`${API_BASE}/thoughts/${thoughtId}/archive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok) throw new Error(`archiveThought 失败：HTTP ${res.status}`)
+  return res.json()
+}

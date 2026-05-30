@@ -2,7 +2,7 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -43,6 +43,15 @@ class InviteInput(BaseModel):
     state: str
 
 
+class InviteResponse(BaseModel):
+    thought_id: int
+    outcome: str
+
+
+_VALID_OUTCOMES = {"accepted", "declined", "ignored"}
+_COOLING_LABELS = {"accepted": 14, "declined": 5, "ignored": 3}
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -55,6 +64,10 @@ def create_thought(body: ThoughtInput, db: Session = Depends(get_db)):
     print("[AI 处理中] 正在提取结构化信息...")
     extracted = llm.extract_thought_info(body.content)
     print(f"[AI 完成] 提取结果：{json.dumps(extracted, ensure_ascii=False)}")
+
+    if extracted.get("unclear"):
+        print(f"[未存入] 输入不清晰: {body.content}")
+        return {"unclear": True, "message": "嗯，没太听清，要不再说一次？"}
 
     thought = Thought(
         content_raw=body.content,
@@ -154,3 +167,38 @@ def invite_thought(body: InviteInput, db: Session = Depends(get_db)):
         "summary": summary,
         "invitation": invitation,
     }
+
+
+@app.post("/thoughts/{thought_id}/archive")
+def archive_thought(thought_id: int, db: Session = Depends(get_db)):
+    thought = db.query(Thought).filter(Thought.id == thought_id).first()
+    if not thought:
+        raise HTTPException(status_code=404, detail=f"念头 ID={thought_id} 不存在")
+    thought.status = "archived"
+    db.commit()
+    print(f"[撤回] thought_id={thought_id} 已归档")
+    return {"ok": True}
+
+
+@app.post("/thoughts/invite/respond")
+def respond_to_invite(body: InviteResponse, db: Session = Depends(get_db)):
+    if body.outcome not in _VALID_OUTCOMES:
+        raise HTTPException(status_code=400, detail="outcome 必须是 accepted | declined | ignored")
+
+    thought = db.query(Thought).filter(Thought.id == body.thought_id).first()
+    if not thought:
+        raise HTTPException(status_code=404, detail=f"念头 ID={body.thought_id} 不存在")
+
+    thought.last_outcome = body.outcome
+
+    if body.outcome == "declined":
+        thought.decline_count = (thought.decline_count or 0) + 1
+        if thought.decline_count >= 3:
+            thought.status = "archived"
+
+    db.commit()
+
+    cooling = _COOLING_LABELS[body.outcome]
+    print(f"[回应] thought_id={body.thought_id} outcome={body.outcome} → 冷却{cooling}天")
+
+    return {"ok": True, "thought_id": body.thought_id, "status": thought.status}

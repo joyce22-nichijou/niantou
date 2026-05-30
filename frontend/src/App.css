@@ -70,10 +70,12 @@
 /* ── 水彩色块基础 ─────────────────────── */
 
 /* 不设 opacity，由父级 wc-group inline style 统一控制 */
+/* translate/scale/rotate 个别属性的 transition 用于动画退出时平滑复位 */
 .blob {
   position: absolute;
   border-radius: 50%;
   filter: blur(45px);
+  transition: translate 0.5s ease-out, scale 0.5s ease-out, rotate 0.5s ease-out;
 }
 
 /* 主角 1：淡蓝，左上 */
@@ -118,6 +120,80 @@
   transform: rotate(-18deg);
 }
 
+/* ── submitting 水彩流动动画 ─────────────── */
+
+/* 三个独立 CSS transform 属性动画，与 .blob 的静态 transform:rotate 正交叠加。
+   四关键帧（0/25/75/100）让动画从 0 出发、向正负两侧摆动、自然归位，无跳帧。
+   冷色（上区）幅度比暖色（下区）更大，补偿冷色明度高接近背景的视觉弱势。 */
+
+/* 暖色（下区）：±12% 漂移 */
+@keyframes blob-drift-warm {
+  0%   { translate:   0% 0; }
+  25%  { translate:  12% 0; }
+  75%  { translate: -12% 0; }
+  100% { translate:   0% 0; }
+}
+/* 暖色：0.95~1.08 呼吸 */
+@keyframes blob-breathe-warm {
+  0%   { scale: 1;    }
+  25%  { scale: 1.08; }
+  75%  { scale: 0.95; }
+  100% { scale: 1;    }
+}
+
+/* 冷色（上区）：±15% 漂移 */
+@keyframes blob-drift-cold {
+  0%   { translate:   0% 0; }
+  25%  { translate:  15% 0; }
+  75%  { translate: -15% 0; }
+  100% { translate:   0% 0; }
+}
+/* 冷色：0.92~1.10 呼吸 */
+@keyframes blob-breathe-cold {
+  0%   { scale: 1;    }
+  25%  { scale: 1.10; }
+  75%  { scale: 0.92; }
+  100% { scale: 1;    }
+}
+
+/* 共用摆动：±7deg（冷暖相同） */
+@keyframes blob-sway {
+  0%   { rotate:  0deg; }
+  25%  { rotate:  7deg; }
+  75%  { rotate: -7deg; }
+  100% { rotate:  0deg; }
+}
+
+/* 暖色主色块（blob-2，下区淡黄） */
+.blob--flowing-warm-main {
+  animation:
+    blob-drift-warm   3.7s ease-in-out infinite,
+    blob-breathe-warm 5.3s ease-in-out infinite,
+    blob-sway         7.1s ease-in-out infinite;
+}
+/* 暖色配色块（blob-4，下区淡粉），相位错开 */
+.blob--flowing-warm-secondary {
+  animation:
+    blob-drift-warm   3.7s ease-in-out -2.1s infinite,
+    blob-breathe-warm 5.3s ease-in-out -1.8s infinite,
+    blob-sway         7.1s ease-in-out -2.3s infinite;
+}
+
+/* 冷色主色块（blob-1，上区淡蓝） */
+.blob--flowing-cold-main {
+  animation:
+    blob-drift-cold   3.7s ease-in-out infinite,
+    blob-breathe-cold 5.3s ease-in-out infinite,
+    blob-sway         7.1s ease-in-out infinite;
+}
+/* 冷色配色块（blob-3，上区淡紫），相位错开 */
+.blob--flowing-cold-secondary {
+  animation:
+    blob-drift-cold   3.7s ease-in-out -2.1s infinite,
+    blob-breathe-cold 5.3s ease-in-out -1.8s infinite,
+    blob-sway         7.1s ease-in-out -2.3s infinite;
+}
+
 /* ── 录音按钮 ─────────────────────────── */
 
 /* transform 由 inline style 控制，这里只设定位 */
@@ -129,7 +205,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  z-index: 10;
+  z-index: 30;
 }
 
 .mic-btn {
@@ -189,6 +265,19 @@
   max-width: 180px;
 }
 
+/* 撤回链接（"念头记下了"右侧） */
+.revoke-link {
+  font-family: sans-serif;
+  font-size: 12px;
+  color: rgba(48, 36, 28, 0.45);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  margin-left: 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* 无效滑动反馈文字 */
 .feedback-text {
   font-family: serif;
@@ -200,36 +289,100 @@
 
 /* ── 邀请便条 ─────────────────────────── */
 
-@keyframes cardFadeIn {
+@keyframes inviteGroupIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(10px);
+    transform: translate(-50%, calc(-50% + 10px));
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translate(-50%, -50%);
   }
 }
 
-.invite-card {
+/* 便条+按钮+分隔线+录音按钮的统一容器，居中淡入 */
+.invite-group {
   position: fixed;
-  top: calc(50% + 100px);
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.88);
-  padding: 24px;
-  border-radius: 12px;
-  max-width: 320px;
+  transform: translate(-50%, -50%);
+  max-width: 340px;
   width: calc(100% - 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   z-index: 20;
-  animation: cardFadeIn 0.6s ease-out forwards;
+  animation: inviteGroupIn 0.6s ease-out forwards;
+}
+
+/* 白色卡片区域 */
+.invite-box {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 28px;
+  border-radius: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
 }
 
 .invite-text {
   font-family: serif;
-  font-size: 1rem;
-  line-height: 1.75;
-  color: rgba(48, 36, 28, 0.85);
+  font-size: 16px;
+  line-height: 1.7;
+  color: #3D3A33;
   margin: 0;
   letter-spacing: 0.04em;
+}
+
+/* 回应按钮组 */
+.invite-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.invite-btn {
+  background: white;
+  border: 1px solid #D9D2C5;
+  border-radius: 24px;
+  padding: 12px 32px;
+  font-family: serif;
+  font-size: 14px;
+  color: #3D3A33;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s ease-out;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.invite-btn:hover,
+.invite-btn:active {
+  background: #F0ECE4;
+}
+
+/* 分隔线 */
+.invite-divider {
+  width: 40px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+/* 便条内嵌录音按钮区 */
+.invite-mic-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 56px 紧凑版录音按钮（仅在邀请卡片内使用） */
+.mic-btn--compact {
+  width: 56px;
+  height: 56px;
+  font-size: 1.4rem;
 }

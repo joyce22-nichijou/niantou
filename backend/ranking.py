@@ -10,32 +10,27 @@ from backend.database import Thought
 # 新鲜度半衰期：7 天（PRD 第九章）
 _HALFLIFE_DAYS = 7
 
-# MVP 冷却期：统一 5 天
-# 完整版应按 outcome 区分：接受→14天、明确拒绝→5天、无回应→3天
-# MVP 阶段尚未记录 outcome，暂时对所有情况用 5 天
-_COOLING_DAYS = 5
+# 冷却天数按 last_outcome 区分；None 表示已邀请但未记录回应，视为 ignored
+_COOLING_BY_OUTCOME = {
+    "accepted": 14,
+    "declined": 5,
+    "ignored": 3,
+    None: 3,
+}
 
 
 def compute_weight(thought: Thought, now: datetime) -> float:
     """
-    计算单个念头的排序权重。
-
-    权重 = 新鲜度衰减 × 冷却系数
-
-    新鲜度衰减：e^(-Δt_days / 7)
-      - Δt_days 为 created_at 到 now 的天数
-      - 7 天后新鲜度约为 0.37，21 天后约为 0.05（触发归档阈值）
-
-    冷却系数：
-      - last_invited_at 距今 < 5 天 → 0（屏蔽，不参与本轮选择）
-      - 否则 → 1
+    权重 = 新鲜度衰减（e^(-Δt/7)）× 冷却系数（在冷却期内返回 0）。
+    冷却天数由 last_outcome 决定；从未邀请（last_invited_at is None）不冷却。
     """
     delta_days = (now - thought.created_at).total_seconds() / 86400
     freshness = math.exp(-delta_days / _HALFLIFE_DAYS)
 
     if thought.last_invited_at is not None:
+        cooling_days = _COOLING_BY_OUTCOME.get(thought.last_outcome, 3)
         days_since_invited = (now - thought.last_invited_at).total_seconds() / 86400
-        if days_since_invited < _COOLING_DAYS:
+        if days_since_invited < cooling_days:
             return 0.0
 
     return freshness
