@@ -310,7 +310,7 @@ export default function App() {
 
   // ── 主录音手势事件（仅 idle 可用）────────────────────
 
-  const handlePointerDown = (e) => {
+  const handlePointerDown = async (e) => {
     if (mode !== 'idle') return
 
     pendingReinviteRef.current = false
@@ -323,7 +323,7 @@ export default function App() {
     setResultKind(null)
     setInvitationText(null)
     applyMode('recording')
-    startStream()
+    await startStream()
     startSpeechRecognition()
     console.log('按下，进入录音状态')
   }
@@ -394,7 +394,7 @@ export default function App() {
 
   // ── 再邀请录音手势事件 ────────────────────────────────
 
-  const handleReinvitePointerDown = (e) => {
+  const handleReinvitePointerDown = async (e) => {
     if (mode !== 'showing_result') return
 
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -403,7 +403,7 @@ export default function App() {
     isRecordingRef.current = true
     transcribedTextRef.current = ''
     applyMode('recording_for_reinvite')
-    startStream()
+    await startStream()
     startSpeechRecognition()
     console.log('再邀请：按下，开始录音')
   }
