@@ -598,6 +598,7 @@ export default function App() {
 
   return (
     <div className="page">
+      <div className="egg-corner" onClick={handleEggClick} />
       <div className="app-container">
         <div className="watercolor-layer">
           <div className="wc-group" style={groupStyle(true)}>
@@ -630,7 +631,6 @@ export default function App() {
 
       {/* 中央录音按钮：邀请卡片显示时淡出隐藏 */}
       <div className="mic-wrapper" style={micWrapperStyle()}>
-        <span className="product-name-egg" onClick={handleEggClick}>念头</span>
         {mode === 'showing_result' && resultKind === 'empty' && (
           <span className="feedback-text">嗯，再说一次？</span>
         )}

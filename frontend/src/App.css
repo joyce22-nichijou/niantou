@@ -387,18 +387,15 @@
   font-size: 1.4rem;
 }
 
-/* ── 录音按钮上方隐藏彩蛋产品名 ─────────── */
+/* ── 左上角隐藏彩蛋触发区 ─────────────────── */
 
-.product-name-egg {
-  font-family: serif;
-  font-size: 11px;
-  color: rgba(48, 36, 28, 0.3);
-  letter-spacing: 0.08em;
-  text-align: center;
-  cursor: default;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
+.egg-corner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  z-index: 200;
 }
 
 /* ── 开屏引导页 ───────────────────────────── */
