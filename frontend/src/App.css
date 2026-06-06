@@ -482,3 +482,116 @@
 .onboarding-btn:active {
   background: rgba(255, 255, 255, 0.92);
 }
+
+/* ── 触发页（轻触唤醒） ───────────────────── */
+
+.trigger-page {
+  position: fixed;
+  inset: 0;
+  background: #FDFCF8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 1;
+  transition: opacity 0.3s ease-out;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trigger-page--fading {
+  opacity: 0;
+}
+
+.trigger-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #B5D4F4;
+  opacity: 0.6;
+}
+
+.trigger-hint {
+  margin: 16px 0 0;
+  font-family: sans-serif;
+  font-size: 12px;
+  color: rgba(48, 36, 28, 0.3);
+  letter-spacing: 0.06em;
+}
+
+/* ── 水滴下落触水 ─────────────────────────── */
+
+@keyframes drop-fall-hit {
+  0%   { transform: translateY(-20vh) scaleY(1);   opacity: 1; }
+  85%  { transform: translateY(0)     scaleY(1.3); opacity: 1; }
+  100% { transform: translateY(0)     scale(0);    opacity: 0; }
+}
+
+.anim-drop {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #B5D4F4;
+  pointer-events: none;
+  z-index: 101;
+  animation: drop-fall-hit 0.7s ease-in forwards;
+}
+
+/* ── 涟漪扩散 ─────────────────────────────── */
+
+@keyframes ripple-out {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+  to   { transform: translate(-50%, -50%) scale(1); opacity: 0;   }
+}
+
+.anim-ripple {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  border: 1px solid;
+  pointer-events: none;
+  z-index: 101;
+  animation: ripple-out 0.8s ease-out both;
+}
+
+.anim-ripple-1 { width: 120px; height: 120px; border-color: #B5D4F4; animation-delay: 0.60s; }
+.anim-ripple-2 { width: 200px; height: 200px; border-color: #CECBF6; animation-delay: 0.75s; }
+.anim-ripple-3 { width: 280px; height: 280px; border-color: #F4C0D1; animation-delay: 0.90s; }
+
+/* ── 水彩色块浮现 ─────────────────────────── */
+
+@keyframes blobs-emerge {
+  from { transform: scale(0); opacity: 0;   }
+  to   { transform: scale(1); opacity: 0.2; }
+}
+
+.onboarding-blobs--anim {
+  transform: scale(0);
+  opacity: 0;
+  transform-origin: center center;
+  animation: blobs-emerge 0.8s ease-out both;
+  animation-delay: 1.2s;
+}
+
+/* ── 内容淡入 ─────────────────────────────── */
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadein-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.anim-fadein    { animation: fadein    0.4s ease-out both; }
+.anim-fadein-up { animation: fadein-up 0.4s ease-out both; }
