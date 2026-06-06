@@ -1,8 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import { captureThought, requestInvite, respondToInvite, archiveThought } from './api'
+import Onboarding from './Onboarding'
 
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => !localStorage.getItem('niantou_visited')
+  )
+  const eggClicksRef = useRef(0)
+  const eggTimerRef = useRef(null)
+
   // mode: idle | recording | waiting_transcript | submitting | showing_result | recording_for_reinvite
   const [mode, setMode] = useState('idle')
   const [swipeDirection, setSwipeDirection] = useState(null)
@@ -38,10 +45,25 @@ export default function App() {
     return () => {
       clearTimeout(timerRef.current)
       clearTimeout(transcriptTimeoutRef.current)
+      clearTimeout(eggTimerRef.current)
       stopStream()
       stopSpeechRecognition()
     }
   }, [])
+
+  const handleEggClick = () => {
+    eggClicksRef.current += 1
+    clearTimeout(eggTimerRef.current)
+    if (eggClicksRef.current >= 5) {
+      eggClicksRef.current = 0
+      localStorage.removeItem('niantou_visited')
+      window.location.reload()
+    } else {
+      eggTimerRef.current = setTimeout(() => {
+        eggClicksRef.current = 0
+      }, 1500)
+    }
+  }
 
   // ── 辅助：同步更新 mode state 和 modeRef ─────────────
 
@@ -570,6 +592,10 @@ export default function App() {
 
   // ── 渲染 ──────────────────────────────────────────────
 
+  if (showOnboarding) {
+    return <Onboarding onDone={() => setShowOnboarding(false)} />
+  }
+
   return (
     <div className="page">
       <div className="app-container">
@@ -604,6 +630,7 @@ export default function App() {
 
       {/* 中央录音按钮：邀请卡片显示时淡出隐藏 */}
       <div className="mic-wrapper" style={micWrapperStyle()}>
+        <span className="product-name-egg" onClick={handleEggClick}>念头</span>
         {mode === 'showing_result' && resultKind === 'empty' && (
           <span className="feedback-text">嗯，再说一次？</span>
         )}

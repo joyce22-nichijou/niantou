@@ -386,3 +386,102 @@
   height: 56px;
   font-size: 1.4rem;
 }
+
+/* ── 录音按钮上方隐藏彩蛋产品名 ─────────── */
+
+.product-name-egg {
+  font-family: serif;
+  font-size: 11px;
+  color: rgba(48, 36, 28, 0.3);
+  letter-spacing: 0.08em;
+  text-align: center;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── 开屏引导页 ───────────────────────────── */
+
+.onboarding-page {
+  position: fixed;
+  inset: 0;
+  background: #FDFCF8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 1;
+  transition: opacity 0.6s ease-out;
+}
+
+.onboarding-page--fading {
+  opacity: 0;
+}
+
+.onboarding-blobs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+}
+
+.onboarding-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 40px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.onboarding-title {
+  font-family: serif;
+  font-size: 28px;
+  color: #3D3A33;
+  margin: 0;
+  font-weight: normal;
+  letter-spacing: 0.1em;
+}
+
+.onboarding-body {
+  font-family: serif;
+  font-size: 16px;
+  line-height: 2.0;
+  color: #5C574E;
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.04em;
+  white-space: pre-line;
+}
+
+.onboarding-hint {
+  font-family: sans-serif;
+  font-size: 12px;
+  color: rgba(60, 58, 51, 0.4);
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.onboarding-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #D9D2C5;
+  border-radius: 24px;
+  padding: 12px 48px;
+  font-family: serif;
+  font-size: 15px;
+  color: #3D3A33;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background 0.2s ease-out;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.onboarding-btn:hover,
+.onboarding-btn:active {
+  background: rgba(255, 255, 255, 0.92);
+}
