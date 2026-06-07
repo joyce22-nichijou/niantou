@@ -130,21 +130,24 @@ npm run dev
 ---
 
 ## 项目结构
+
+```text
 niantou/
-├── PRD.md                 # 产品需求文档
-├── Procfile               # Railway 部署配置
+├── PRD.md                  # 产品需求文档
+├── Procfile                # Railway 部署配置
 ├── backend/
-│   ├── main.py            # FastAPI 入口 + API 路由
-│   ├── llm_service.py     # LLM 抽象层（GLM / Claude / DeepSeek）
-│   ├── ranking.py         # 念头权重计算 + 场景过滤 + 随机抽取
-│   ├── database.py        # SQLAlchemy 数据模型 + 迁移
-│   └── run.py             # Railway 启动入口
+│   ├── main.py             # FastAPI 入口 + API 路由
+│   ├── llm_service.py      # LLM 抽象层
+│   ├── ranking.py          # 念头权重计算 + 场景过滤
+│   ├── database.py         # 数据模型 + 迁移
+│   └── run.py              # 部署启动入口
 └── frontend/
-└── src/
-├── App.jsx        # 主界面 + 状态机 + 交互逻辑
-├── App.css        # 水彩 UI + 动效
-├── api.js         # 后端 API 客户端
-└── sounds/        # 开屏音效
+    └── src/
+        ├── App.jsx         # 主界面 + 状态机
+        ├── App.css         # 水彩 UI + 动效
+        ├── api.js          # API 客户端
+        └── sounds/         # 开屏音效
+```
 
 ---
 
