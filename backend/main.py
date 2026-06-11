@@ -37,15 +37,22 @@ app.add_middleware(
 
 class ThoughtInput(BaseModel):
     content: str
+    user_id: str
 
 
 class InviteInput(BaseModel):
     state: str
+    user_id: str
 
 
 class InviteResponse(BaseModel):
     thought_id: int
     outcome: str
+    user_id: str
+
+
+class ArchiveInput(BaseModel):
+    user_id: str
 
 
 _VALID_OUTCOMES = {"accepted", "declined", "ignored"}
@@ -59,7 +66,7 @@ def health():
 
 @app.post("/thoughts")
 def create_thought(body: ThoughtInput, db: Session = Depends(get_db)):
-    print(f"\n[接收到] 新念头：{body.content}")
+    print(f"\n[接收] user={body.user_id[:8]} 念头: {body.content}")
 
     print("[AI 处理中] 正在提取结构化信息...")
     extracted = llm.extract_thought_info(body.content)
@@ -73,6 +80,7 @@ def create_thought(body: ThoughtInput, db: Session = Depends(get_db)):
         content_raw=body.content,
         extracted_info=json.dumps(extracted, ensure_ascii=False),
         temperature=1.0,
+        user_id=body.user_id,
     )
     db.add(thought)
     db.commit()
@@ -90,19 +98,19 @@ def create_thought(body: ThoughtInput, db: Session = Depends(get_db)):
 @app.post("/thoughts/invite")
 def invite_thought(body: InviteInput, db: Session = Depends(get_db)):
     now = datetime.now()
-    print(f"\n[接收到] 状态问询：「{body.state}」")
+    print(f"\n[接收] user={body.user_id[:8]} 状态问询：「{body.state}」")
 
     # 1. 判断用户状态的场景倾向（轻量 AI 调用，用于硬过滤）
     scene_filter = llm.detect_state_scene(body.state)
     print(f"[场景判断] {scene_filter or '不过滤（状态方向不明确）'}")
 
     # 2. 规则层：取候选（多取，留给随机抽取用）
-    all_eligible = get_top_candidates(db, now, n=10, scene_filter=scene_filter)
+    all_eligible = get_top_candidates(db, now, body.user_id, n=10, scene_filter=scene_filter)
 
     # 场景过滤后若无候选，回退到不限场景
     if not all_eligible and scene_filter:
         print(f"[候选] 场景过滤后为空，回退到不限场景")
-        all_eligible = get_top_candidates(db, now, n=10)
+        all_eligible = get_top_candidates(db, now, body.user_id, n=10)
 
     if not all_eligible:
         print("[候选] 念头池为空或全部处于冷却期")
@@ -170,13 +178,17 @@ def invite_thought(body: InviteInput, db: Session = Depends(get_db)):
 
 
 @app.post("/thoughts/{thought_id}/archive")
-def archive_thought(thought_id: int, db: Session = Depends(get_db)):
-    thought = db.query(Thought).filter(Thought.id == thought_id).first()
+def archive_thought(thought_id: int, body: ArchiveInput, db: Session = Depends(get_db)):
+    thought = (
+        db.query(Thought)
+        .filter(Thought.id == thought_id, Thought.user_id == body.user_id)
+        .first()
+    )
     if not thought:
         raise HTTPException(status_code=404, detail=f"念头 ID={thought_id} 不存在")
     thought.status = "archived"
     db.commit()
-    print(f"[撤回] thought_id={thought_id} 已归档")
+    print(f"[撤回] user={body.user_id[:8]} thought_id={thought_id} 已归档")
     return {"ok": True}
 
 
@@ -185,7 +197,11 @@ def respond_to_invite(body: InviteResponse, db: Session = Depends(get_db)):
     if body.outcome not in _VALID_OUTCOMES:
         raise HTTPException(status_code=400, detail="outcome 必须是 accepted | declined | ignored")
 
-    thought = db.query(Thought).filter(Thought.id == body.thought_id).first()
+    thought = (
+        db.query(Thought)
+        .filter(Thought.id == body.thought_id, Thought.user_id == body.user_id)
+        .first()
+    )
     if not thought:
         raise HTTPException(status_code=404, detail=f"念头 ID={body.thought_id} 不存在")
 
@@ -199,6 +215,6 @@ def respond_to_invite(body: InviteResponse, db: Session = Depends(get_db)):
     db.commit()
 
     cooling = _COOLING_LABELS[body.outcome]
-    print(f"[回应] thought_id={body.thought_id} outcome={body.outcome} → 冷却{cooling}天")
+    print(f"[回应] user={body.user_id[:8]} thought_id={body.thought_id} outcome={body.outcome} → 冷却{cooling}天")
 
     return {"ok": True, "thought_id": body.thought_id, "status": thought.status}

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, Text, Float, DateTime, text
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, DateTime, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -23,17 +23,23 @@ class Thought(Base):
     last_outcome = Column(Text, nullable=True)   # "accepted" | "declined" | "ignored" | None
     decline_count = Column(Integer, default=0)
     status = Column(Text, default="active")
+    user_id = Column(String, nullable=False, index=True)
 
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    # 存量数据库迁移：检查并补加 last_outcome 列
+    # 存量数据库迁移：检查并补加 last_outcome / user_id 列
     with engine.connect() as conn:
         cols = [row[1] for row in conn.execute(text("PRAGMA table_info(thoughts)"))]
         if "last_outcome" not in cols:
             conn.execute(text("ALTER TABLE thoughts ADD COLUMN last_outcome TEXT"))
             conn.commit()
             print("[迁移] 已添加 last_outcome 列")
+        if "user_id" not in cols:
+            conn.execute(text("ALTER TABLE thoughts ADD COLUMN user_id TEXT NOT NULL DEFAULT 'legacy'"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_thoughts_user_id ON thoughts (user_id)"))
+            conn.commit()
+            print("[迁移] 已添加 user_id 列（旧数据归为 'legacy'）")
 
 
 def get_db():

@@ -11,6 +11,7 @@ import requests
 from database import SessionLocal, Thought
 
 BASE_URL = "http://127.0.0.1:8000"
+TEST_USER_ID = "test-script-user"
 
 # 5 种测试状态，含预期行为说明（仅供人工核对参考）
 TESTS = [
@@ -64,7 +65,7 @@ def run_test(state: str, note: str, index: int) -> int | None:
     print(f"测试 {index}｜{note}")
     print(f"状态：「{state}」")
 
-    resp = requests.post(f"{BASE_URL}/thoughts/invite", json={"state": state})
+    resp = requests.post(f"{BASE_URL}/thoughts/invite", json={"state": state, "user_id": TEST_USER_ID})
     if resp.status_code != 200:
         print(f"[错误] 状态码 {resp.status_code}：{resp.text}")
         return None

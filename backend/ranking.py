@@ -51,6 +51,7 @@ def _get_scene(thought: Thought) -> str:
 def get_top_candidates(
     db: Session,
     now: datetime,
+    user_id: str,
     n: int = 10,
     scene_filter: str | None = None,
 ) -> list[Thought]:
@@ -58,7 +59,7 @@ def get_top_candidates(
     从念头池中取出按权重排序的候选念头（纯规则计算，不调用 AI）。
 
     筛选流程：
-    1. 查出所有 status='active' 的念头
+    1. 查出当前用户所有 status='active' 的念头
     2. 计算权重，过滤掉冷却期内（weight == 0）的念头
     3. 按 scene_filter 决定候选构成：
        - None：所有念头平等参与
@@ -66,7 +67,11 @@ def get_top_candidates(
          仅当正主数量 < 2 时才补入 either 类；完全排除对立 scene
     4. 按权重降序，返回前 n 个
     """
-    active_thoughts = db.query(Thought).filter(Thought.status == "active").all()
+    active_thoughts = (
+        db.query(Thought)
+        .filter(Thought.status == "active", Thought.user_id == user_id)
+        .all()
+    )
 
     weighted = [(t, compute_weight(t, now)) for t in active_thoughts]
     eligible = [(t, w) for t, w in weighted if w > 0]

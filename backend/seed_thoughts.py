@@ -7,6 +7,7 @@ import requests
 from database import SessionLocal, Thought
 
 BASE_URL = "http://127.0.0.1:8000"
+TEST_USER_ID = "test-script-user"
 
 NEW_THOUGHTS = [
     "想去河边那家新开的面包店尝尝",
@@ -33,7 +34,7 @@ if current >= 6:
 else:
     print(f"开始添加 {len(NEW_THOUGHTS)} 条新念头...\n")
     for text in NEW_THOUGHTS:
-        resp = requests.post(f"{BASE_URL}/thoughts", json={"content": text})
+        resp = requests.post(f"{BASE_URL}/thoughts", json={"content": text, "user_id": TEST_USER_ID})
         if resp.status_code == 200:
             data = resp.json()
             print(f"  ID={data['id']}  摘要：{data['summary']}  ←  {text}")

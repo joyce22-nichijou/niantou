@@ -10,6 +10,7 @@ import requests
 from database import SessionLocal, Thought
 
 BASE_URL = "http://localhost:8000"
+TEST_USER_ID = "test-script-user"
 
 TEST_THOUGHTS = [
     "我想去媒体图书馆借乐器",
@@ -23,7 +24,7 @@ print("=" * 55)
 
 for text in TEST_THOUGHTS:
     print(f"\n→ 发送念头：{text}")
-    resp = requests.post(f"{BASE_URL}/thoughts", json={"content": text})
+    resp = requests.post(f"{BASE_URL}/thoughts", json={"content": text, "user_id": TEST_USER_ID})
     if resp.status_code == 200:
         data = resp.json()
         print(f"  返回：{json.dumps(data, ensure_ascii=False, indent=4)}")
