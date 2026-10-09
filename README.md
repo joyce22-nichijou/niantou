@@ -1,123 +1,300 @@
-# 念头（Niantou）
+# 念头 · Niantou
 
-> 一个帮你接住散落念头、在合适时机唤醒行动的 AI 伴侣。
+> **An AI companion that catches your fleeting thoughts and invites you back to act on them.**  
+> 一个 AI 伴侣，帮你接住散落的念头，在合适的时机轻轻唤你去做。
 
-**[→ 立即体验](https://niantou-omega.vercel.app/)** ｜ **[→ 产品设计文档 (PRD)](./PRD.md)**
-
----
-
-## 这是什么
-
-你有没有过这样的时刻——
-
-洗澡时突然想到"我应该去那家新开的咖啡馆看看"，出来拿起手机，刷了两条消息，念头就消失了。
-
-或者躺在床上，脑子里转着五六个"想做的事"，但哪个都启动不了，最后什么都没做。
-
-**念头**是为这种时刻设计的。
-
-它做两件事：
-- **向上滑**：把脑子里冒出来的念头放进"念头池"，不需要整理、不需要分类，说一句话就行
-- **向下滑**：当你不知道做什么的时候，它从池子里挑一个最适合你当下状态的念头，用朋友的口吻邀请你去做
-
-它不是待办清单。不会提醒你"昨天没完成的事"。不会给你排优先级。
-它更像一个安静的朋友——替你记着那些容易溜走的小心思，等你准备好了，轻轻递给你。
+**Live demo:** https://niantou-omega.vercel.app  
+**Backend API:** https://web-production-71137.up.railway.app
 
 ---
 
-## 产品设计的核心思考
+## What it does
 
-### 为什么不做提醒和清单
+Most to-do apps ask you to *decide* and *commit*. Niantou doesn't.
 
-提醒和清单会触发"被安排感"——哪怕是自己写的计划，执行时也会产生抗拒。这个产品的用户画像是容易陷入分析瘫痪、对计划感到压力的人。所以产品的所有交互都围绕一个原则：**邀请，而非命令。**
+You press and hold the mic button, say a thought out loud ("I want to try that new bakery"), and swipe **up** to let it sink into the pool. Later, when you feel stuck or restless, you swipe **down** — and the AI surfaces one thought as a warm, friend-like invitation tailored to your current energy and the time of day.
 
-### 双向滑动：用身体动作替代认知决策
+No lists. No reminders. No pressure. Just a gentle nudge at the right moment.
 
-传统的"两个按钮选模式"要求用户先做一次认知判断（"我现在是要记录还是要获取建议？"）。双向滑动让这个判断变成一个身体动作——说完话，凭直觉往上或往下一滑。先动身体，认知会跟上。
+### Core interaction
 
-### 念头池的生命周期
+| Gesture | Action |
+|---------|--------|
+| Hold + swipe ↑ | Capture a thought — voice → AI extraction → pool |
+| Hold + swipe ↓ | Pull an invitation — AI picks one thought, writes the invite |
+| "好，去看看" | Accept — thought enters 14-day cooldown |
+| "今天先这样" | Decline — thought enters 5-day cooldown |
+| Hold mic again | Ignore & redraw — 3-day cooldown |
 
-念头不会永远等你。新鲜的念头权重高（指数衰减，τ=7天），被邀请过的念头会进入冷却期（接受后冷却14天、拒绝5天、忽略3天），超过21天没被选中的念头自动归档。这模拟了真实记忆的"遗忘曲线"——如果一个念头真的重要，它会在消失之前被捞起来。
+### Why it works this way
 
-### AI 的语气分档
-
-AI 根据用户当下的能量状态自动调整语气：
-- **低能量**（"好累""提不起劲"）→ 温和型：节奏慢、不施压、优先推荐低成本的事
-- **情绪尚可**（"有点闷""想出门"）→ 好奇引导型：用具体的未来画面降低启动门槛（"那个新展览听说有幅特别神的画，看完没准给你点灵感呢？"）
-
-### 刻意不做的事
-
-- ❌ 默认念头池（会破坏"接住你自己的念头"的核心价值）
-- ❌ "换一个"按钮（会诱导用户比较和挑选，重新陷入分析瘫痪）
-- ❌ 每日打卡 / 完成率统计（会把轻盈的邀请变成沉重的 KPI）
-- ❌ 短期对话记忆（MVP 阶段性价比不足，留在 v0.2 规划中）
-
-每个"不做"都有明确的产品理由。详见 [PRD](./PRD.md)。
+- **Analysis paralysis** is real. Choosing from a list costs cognitive energy you don't have.  
+- **Body doubles the decision.** A swipe gesture bypasses the "should I?" loop.  
+- **AI does the choosing.** Weighted by recency decay, cooldown state, scene filter (indoor / outdoor / either), and your current energy level.  
+- **Witnessing matters.** Saying a thought out loud — even to an app — gives it the social weight needed to feel real.
 
 ---
 
-## 技术架构
+## Tech stack
 
-### 技术栈
+| Layer | Tech |
+|-------|------|
+| Frontend | React + Vite (PWA) |
+| Backend | Python + FastAPI |
+| Database | SQLite |
+| LLM | GLM-4-Flash (Zhipu AI — permanently free, strong Chinese) |
+| Frontend deploy | Vercel |
+| Backend deploy | Railway |
+| Voice input | Web Speech API |
+
+**LLM abstraction:** `LLMService` base class supports swapping to Claude / DeepSeek without changing business logic.
+
+---
+
+## Recommendation algorithm
+
+Each thought gets a weight at invite time:
+
+```
+weight = freshness_decay × cooldown_multiplier × scene_match
+```
+
+- **Freshness decay:** `e^(-Δt / 7days)` — newer thoughts float up naturally  
+- **Cooldown:** accepted = 14 days, declined = 5 days, ignored = 3 days  
+- **Scene filter:** user's current state (e.g. "feeling lazy indoors") is parsed → hard-filters outdoor thoughts  
+- **Variety sampling:** weighted-random draw from top candidates, preventing the same thought from dominating
+
+---
+
+## Prompt engineering highlights
+
+- **Two-tier tone system:**  
+  - Tier A (low energy) → gentle, slow-paced, low-commitment  
+  - Tier B (okay mood) → curious, forward-imagining ("what if you just went to see?")  
+- **Anti-overfitting:** diversified few-shot examples prevent the model from latching onto one phrasing pattern  
+- **Hard rules in prompt:** cross-thought splicing forbidden; scene classification has explicit examples to reduce ambiguity  
+- **Unclear input filter:** mumbles or noise return "Hmm, didn't quite catch that — want to try again?" and are not stored
+
+---
+
+## Project structure
+
+```
+niantou/
+├── PRD.md                  # Full product requirements doc (v1.1)
+├── Procfile                # Railway entry: web: python backend/run.py
+├── requirements.txt        # Root-level copy for Railpack detection
+├── runtime.txt             # python-3.11
+├── backend/
+│   ├── main.py             # FastAPI app, CORS, all API routes
+│   ├── llm_service.py      # LLM abstraction + extract_thought_info + generate_invitation
+│   ├── ranking.py          # Weight formula + scene filter + weighted-random sampling
+│   ├── database.py         # SQLAlchemy models + migration logic
+│   └── run.py              # Railway entry point (sys.path fix)
+└── frontend/
+    └── src/
+        ├── App.jsx         # Main UI + state machine + all interactions
+        ├── App.css         # Watercolor UI + animations
+        ├── api.js          # API client (VITE_API_BASE env var support)
+        ├── userId.js       # Anonymous UUID (localStorage)
+        └── sounds/         # drop.mp3, ripple.mp3 (splash screen SFX)
+```
+
+---
+
+## Local setup
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+
+# Copy env template and add your GLM API key
+cp ../.env.example .env
+# edit .env: GLM_API_KEY=your_key_here
+
+uvicorn main:app --reload
+# → http://localhost:8000
+```
+
+Get a free GLM-4-Flash key at [open.bigmodel.cn](https://open.bigmodel.cn).
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
+To point the frontend at a local backend, create `frontend/.env.local`:
+```
+VITE_API_BASE=http://localhost:8000
+```
+
+---
+
+## API reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/thoughts` | Capture a thought (voice transcript → AI extraction → store) |
+| POST | `/thoughts/invite` | Request an AI-generated invitation |
+| POST | `/thoughts/invite/respond` | Record user response (accepted / declined / ignored) |
+| POST | `/thoughts/{id}/archive` | Undo / archive a thought |
+
+---
+
+## Design decisions (the "why nots")
+
+| Decision | Reasoning |
+|----------|-----------|
+| No thought list view | Would turn it into a to-do app; defeats the "AI chooses for you" core |
+| No "next one" button | Invites analysis paralysis — swipe down again to redraw |
+| No habit tracking | Not a productivity tool; no streaks, no scores |
+| No default sample thoughts | Breaks the "witnessed by you" value prop |
+| Removed playful tone tier | Clashed with the app's quiet, watercolor aesthetic |
+| `either` scene deprioritized | Prevents `either` from dominating when there's a clear indoor/outdoor signal |
+
+---
+
+## Watercolor UI
+
+Background `#FDFCF8` (warm paper white). Four soft ellipses:
+
+- Upper-left: `#B5D4F4` (sky blue) — capture zone  
+- Upper-right: `#CECBF6` (lavender) — accent  
+- Lower-left: `#FAC775` (warm amber) — invite zone  
+- Lower-right: `#F4C0D1` (blush pink) — accent  
+
+Ellipses are asymmetric and diagonal — they blend at the center rather than sitting in the four corners. During submission, the relevant zone pulses with irrational-period animations (3.7 s / 5.3 s / 7.1 s) to avoid mechanical repetition.
+
+---
+
+## v0.2 roadmap
+
+- [ ] "Did you go?" follow-up conversation (closing the loop without a check-in feel)  
+- [ ] Step decomposition for intimidating thoughts (≤ 3 micro-steps)  
+- [ ] RAG user preference store (ChromaDB + GLM Embedding)  
+- [ ] Archive browser (hidden secondary entry)  
+- [ ] Variable reward SFX on completion  
+- [ ] Better STT (replacing Web Speech API)  
+
+---
+
+## Browser compatibility
+
+| Environment | Status |
+|-------------|--------|
+| Android Chrome | ✅ Full support — recommended |
+| Desktop Chrome / Edge | ✅ Full support |
+| iOS Safari 15+ | ⚠️ Requires HTTPS (LAN IP blocked); use deployed URL |
+| Firefox | ❌ No `webkitSpeechRecognition`; gestures work, voice won't |
+
+---
+
+---
+
+# 念头 · Niantou（中文说明）
+
+> 一个 AI 伴侣，帮你接住散落的念头，在合适的时机轻轻唤你去做。
+
+**在线体验：** https://niantou-omega.vercel.app
+
+---
+
+## 产品是什么
+
+大多数待办 App 要你 *决定* 和 *承诺*。念头不这样。
+
+按住麦克风，说出一个念头（"我想去那家新开的面包店"），向上滑——念头沉入池子。  
+等你某天有些无聊或提不起劲，向下滑——AI 根据你现在的状态和时间，挑一个念头，用朋友的语气邀请你去做。
+
+没有列表，没有提醒，没有压力。只是在合适的时机，一句轻轻的"要不要去试试？"
+
+---
+
+## 核心交互
+
+| 手势 | 动作 |
+|------|------|
+| 按住 + 向上滑 | 捕捉念头 — 语音 → AI 提取 → 存入念头池 |
+| 按住 + 向下滑 | 取出邀请 — AI 选一个念头，生成邀请话术 |
+| 好，去看看 | 接受 — 该念头进入 14 天冷却 |
+| 今天先这样 | 拒绝 — 该念头进入 5 天冷却 |
+| 再按住麦克风 | 忽略并重取 — 3 天冷却 |
+
+---
+
+## 为什么这样设计
+
+- **分析瘫痪是真实存在的。** 从列表里选择，需要你本来就不多的认知能量。  
+- **身体动作替代脑部决策。** 滑动手势绕过"要不要做"的循环。  
+- **AI 替你选。** 按新鲜度衰减、冷却状态、场景过滤（室内/室外/皆可）和当前能量档位加权随机抽取。  
+- **被见证感很重要。** 把念头说出来——哪怕只是对一个 App——能给它足够的重量，让它感觉真实。
+
+---
+
+## 技术栈
 
 | 层级 | 技术 |
 |------|------|
 | 前端 | React + Vite（PWA） |
 | 后端 | Python + FastAPI |
 | 数据库 | SQLite |
-| AI 模型 | GLM-4-Flash（智谱 AI，永久免费） |
+| AI 模型 | GLM-4-Flash（智谱 AI，永久免费，中文表现好） |
 | 前端部署 | Vercel |
 | 后端部署 | Railway |
-
-### 模型选择
-
-最初规划使用 Claude Haiku 4.5，后基于三点考量切换到 GLM-4-Flash：
-1. 海外 LLM 服务在中国大陆不可直接访问，国产模型让产品受众范围更大
-2. GLM-4-Flash 永久免费，零运营成本
-3. 中文语境下语义理解与生成质量契合产品需求
-
-代码通过 `LLMService` 抽象类封装模型交互，切换供应商（Claude、DeepSeek 等）只需实现同一接口，不改动业务逻辑。
-
-### 核心算法
-
-**念头推荐权重：**
-权重 = 新鲜度衰减 × 冷却状态 × AI 上下文匹配
-
-- 新鲜度：`e^(-Δt / 7天)`，指数衰减
-- 冷却：按用户反应（接受/拒绝/忽略）设置不同冷却天数
-- 上下文匹配：由 GLM 综合当前时间、用户状态、念头属性判断
-
-**场景硬过滤：**
-每个念头入库时提取 `scene` 属性（indoor / outdoor / either）。邀请时根据用户状态做规则过滤——"想出门"时不会推荐室内活动，反之亦然。AI 选择在规则过滤之后进行，降低选错概率。
-
-### Prompt 工程
-
-- 邀请话术的示例采用多样化设计（不同开头、不同句式、不同长度），防止小模型 few-shot 过拟合
-- 加入 `unclear` 兜底机制：语音识别噪音或残句不会污染念头池
-- 硬规则禁止跨念头拼接，避免 AI 生成"在公园做菜"这类荒诞场景
+| 语音输入 | Web Speech API |
 
 ---
 
-## 本地开发
+## 推荐算法
 
-### 环境要求
+每次邀请时，系统对每条念头计算权重：
 
-- Node.js 18+
-- Python 3.10+
-- GLM API Key（[智谱 AI 开放平台](https://open.bigmodel.cn/) 免费申请）
+```
+weight = 新鲜度衰减 × 冷却系数 × 场景匹配
+```
 
-### 启动后端
+- **新鲜度衰减：** `e^(-Δt / 7天)` — 越新的念头自然浮出  
+- **冷却：** 接受=14天，拒绝=5天，忽略=3天  
+- **场景过滤：** 解析用户当前状态（"没精力"→偏向室内）→ 硬过滤不符合场景的念头  
+- **多样性抽取：** 从高分候选中加权随机抽取，避免同一念头扎堆出现
+
+---
+
+## Prompt 工程亮点
+
+- **语气两档：**  
+  - A档（低能量）→ 温和型，节奏慢，不施压  
+  - B档（情绪尚可）→ 好奇引导型，描绘具体未来画面，预支正反馈  
+- **防过拟合：** 多样化 few-shot 示例，防止模型锁定单一句式  
+- **Prompt 硬规则：** 禁止跨念头拼接；场景判断有具体例子降低歧义  
+- **不清晰输入过滤：** 残句/噪音返回"嗯，没太听清，要不再说一次？"，不入库
+
+---
+
+## 本地运行
+
+### 后端
 
 ```bash
 cd backend
-cp ../.env.example .env
-# 编辑 .env，填入你的 GLM_API_KEY
-
 pip install -r requirements.txt
-uvicorn backend.main:app --reload
+
+cp ../.env.example .env
+# 编辑 .env，填入 GLM_API_KEY=你的密钥
+
+uvicorn main:app --reload
 ```
 
-### 启动前端
+免费 GLM API Key 申请：[open.bigmodel.cn](https://open.bigmodel.cn)
+
+### 前端
 
 ```bash
 cd frontend
@@ -125,42 +302,18 @@ npm install
 npm run dev
 ```
 
-浏览器打开 http://localhost:5173
-
----
-
-## 项目结构
-
-```text
-niantou/
-├── PRD.md                  # 产品需求文档
-├── Procfile                # Railway 部署配置
-├── backend/
-│   ├── main.py             # FastAPI 入口 + API 路由
-│   ├── llm_service.py      # LLM 抽象层
-│   ├── ranking.py          # 念头权重计算 + 场景过滤
-│   ├── database.py         # 数据模型 + 迁移
-│   └── run.py              # 部署启动入口
-└── frontend/
-    └── src/
-        ├── App.jsx         # 主界面 + 状态机
-        ├── App.css         # 水彩 UI + 动效
-        ├── api.js          # API 客户端
-        └── sounds/         # 开屏音效
+本地后端对接，创建 `frontend/.env.local`：
+```
+VITE_API_BASE=http://localhost:8000
 ```
 
 ---
 
-## 后续规划（v0.2）
+## v0.2 规划
 
-- **好奇心热身**：面对紧急但不想启动的任务，AI 从好奇心角度拆解步骤，第一步永远是身体动作
-- **步骤完成的随机反馈**：乐器音效 + 视觉彩蛋（变量奖励机制）
-- **短期对话记忆**：同一次邀请对话中，AI 记住用户否定过的方向
-- **更好的语音识别**：接入专业 STT 服务替代浏览器 Web Speech API
-- **归档区**：隐藏的二级页面，回看自己曾经想过什么
-
----
-
-## 作者
-
-Joyce
+- [ ] "你去了吗"跟进对话（比打卡更符合气质的闭环）  
+- [ ] 念头拆解（≤3步微行动，解决启动困难）  
+- [ ] RAG 用户偏好向量库（ChromaDB + GLM Embedding）  
+- [ ] 归档区（隐藏二级入口）  
+- [ ] 完成随机反馈音效（变量奖励）  
+- [ ] 更好的 STT 服务替代 Web Speech API  
